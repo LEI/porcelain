@@ -112,9 +112,6 @@ main() {
     if [ "$staged_deleted" -gt 0 ]; then
       staged_str="${staged_str}-$staged_deleted"
     fi
-    if [ "$staged_deleted" -gt 0 ]; then
-      staged_str="${staged_str}-$staged_deleted"
-    fi
     if [ "$staged_renamed" -gt 0 ]; then
       staged_str="${staged_str}—$staged_renamed"
     fi
@@ -122,7 +119,7 @@ main() {
       staged_str="${staged_str}=$staged_copied"
     fi
     # ${unstaged}S
-    [ -n "$flags" ] && flags="$flags "
+    [ -n "$flags" ] && [ -n "$staged_str" ] && flags="$flags "
     # shellcheck disable=SC2059
     flags="$flags$(printf "$stage_format" "$staged_str")"
   fi
@@ -137,9 +134,6 @@ main() {
     if [ "$unstaged_deleted" -gt 0 ]; then
       unstaged_str="${unstaged_str}-$unstaged_deleted"
     fi
-    if [ "$unstaged_deleted" -gt 0 ]; then
-      unstaged_str="${unstaged_str}-$unstaged_deleted"
-    fi
     if [ "$unstaged_renamed" -gt 0 ]; then
       unstaged_str="${unstaged_str}•$unstaged_renamed"
     fi
@@ -147,7 +141,7 @@ main() {
       unstaged_str="${unstaged_str}=$unstaged_copied"
     fi
     # ${unstaged}U
-    [ -n "$flags" ] && flags="$flags "
+    [ -n "$flags" ] && [ -n "$staged_str" ] && flags="$flags "
     # shellcheck disable=SC2059
     flags="$flags$(printf "$dirty_format" "$unstaged_str")"
   fi
@@ -162,7 +156,7 @@ main() {
     flags="$flags$(printf "$dirty_format" "${untracked}?")"
   fi
   if [ "$ignored" -gt 0 ]; then
-    [ -n "$flags" ] && flags="$flags "
+    # [ -n "$flags" ] && flags="$flags "
     flags="$flags${ignored}!"
   fi
 
