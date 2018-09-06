@@ -104,22 +104,22 @@ main() {
   if [ "$staged" -gt 0 ]; then
     staged_str=
     if [ "$staged_modified" -gt 0 ]; then
-      staged_str="~$staged_modified"
+      staged_str="${staged_str}~$staged_modified"
     fi
     if [ "$staged_added" -gt 0 ]; then
-      staged_str="+$staged_added"
+      staged_str="${staged_str}+$staged_added"
     fi
     if [ "$staged_deleted" -gt 0 ]; then
-      staged_str="-$staged_deleted"
+      staged_str="${staged_str}-$staged_deleted"
     fi
     if [ "$staged_deleted" -gt 0 ]; then
-      staged_str="-$staged_deleted"
+      staged_str="${staged_str}-$staged_deleted"
     fi
     if [ "$staged_renamed" -gt 0 ]; then
-      staged_str="—$staged_renamed"
+      staged_str="${staged_str}—$staged_renamed"
     fi
     if [ "$staged_copied" -gt 0 ]; then
-      staged_str="=$staged_copied"
+      staged_str="${staged_str}=$staged_copied"
     fi
     # ${unstaged}S
     [ -n "$flags" ] && flags="$flags "
@@ -129,22 +129,22 @@ main() {
   if [ "$unstaged" -gt 0 ]; then
     unstaged_str=
     if [ "$unstaged_modified" -gt 0 ]; then
-      unstaged_str="~$unstaged_modified"
+      unstaged_str="${unstaged_str}~$unstaged_modified"
     fi
     if [ "$unstaged_added" -gt 0 ]; then
-      unstaged_str="+$unstaged_added"
+      unstaged_str="${unstaged_str}+$unstaged_added"
     fi
     if [ "$unstaged_deleted" -gt 0 ]; then
-      unstaged_str="-$unstaged_deleted"
+      unstaged_str="${unstaged_str}-$unstaged_deleted"
     fi
     if [ "$unstaged_deleted" -gt 0 ]; then
-      unstaged_str="-$unstaged_deleted"
+      unstaged_str="${unstaged_str}-$unstaged_deleted"
     fi
     if [ "$unstaged_renamed" -gt 0 ]; then
-      unstaged_str="•$unstaged_renamed"
+      unstaged_str="${unstaged_str}•$unstaged_renamed"
     fi
     if [ "$unstaged_copied" -gt 0 ]; then
-      unstaged_str="=$unstaged_copied"
+      unstaged_str="${unstaged_str}=$unstaged_copied"
     fi
     # ${unstaged}U
     [ -n "$flags" ] && flags="$flags "
