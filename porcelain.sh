@@ -11,6 +11,8 @@ main() {
   clean_format="${3:-%s}" # clean repository format
 
   show_upstream="${PORCELAIN_UPSTREAM:-0}"
+  simple_char="${PORCELAIN_SIMPLE_CHAR:-*}"
+  simple_output="${PORCELAIN_SIMPLE_OUTPUT:-1}"
 
   tmpdir=$(mktemp -d -t git.status)
   tmpfile="$tmpdir/porcelain.fifo"
@@ -101,67 +103,71 @@ main() {
   unstaged=$((unstaged_modified + unstaged_added + unstaged_deleted + unstaged_renamed + unstaged_copied))
   total=$((staged + unstaged + unmerged + untracked)) # + ignored
 
-  if [ "$staged" -gt 0 ]; then
-    staged_str=
-    if [ "$staged_modified" -gt 0 ]; then
-      staged_str="${staged_str}~$staged_modified"
+  if [ "$simple_output" -ne 1 ]; then
+    if [ "$staged" -gt 0 ]; then
+      staged_str=
+      if [ "$staged_modified" -gt 0 ]; then
+        staged_str="${staged_str}~$staged_modified"
+      fi
+      if [ "$staged_added" -gt 0 ]; then
+        staged_str="${staged_str}+$staged_added"
+      fi
+      if [ "$staged_deleted" -gt 0 ]; then
+        staged_str="${staged_str}-$staged_deleted"
+      fi
+      if [ "$staged_renamed" -gt 0 ]; then
+        staged_str="${staged_str}—$staged_renamed"
+      fi
+      if [ "$staged_copied" -gt 0 ]; then
+        staged_str="${staged_str}=$staged_copied"
+      fi
+      # ${unstaged}S
+      [ -n "$flags" ] && [ -n "$staged_str" ] && flags="$flags "
+      # shellcheck disable=SC2059
+      flags="$flags$(printf "$stage_format" "$staged_str")"
     fi
-    if [ "$staged_added" -gt 0 ]; then
-      staged_str="${staged_str}+$staged_added"
+    if [ "$unstaged" -gt 0 ]; then
+      unstaged_str=
+      if [ "$unstaged_modified" -gt 0 ]; then
+        unstaged_str="${unstaged_str}~$unstaged_modified"
+      fi
+      if [ "$unstaged_added" -gt 0 ]; then
+        unstaged_str="${unstaged_str}+$unstaged_added"
+      fi
+      if [ "$unstaged_deleted" -gt 0 ]; then
+        unstaged_str="${unstaged_str}-$unstaged_deleted"
+      fi
+      if [ "$unstaged_renamed" -gt 0 ]; then
+        unstaged_str="${unstaged_str}•$unstaged_renamed"
+      fi
+      if [ "$unstaged_copied" -gt 0 ]; then
+        unstaged_str="${unstaged_str}=$unstaged_copied"
+      fi
+      # ${unstaged}U
+      [ -n "$flags" ] && [ -n "$staged_str" ] && flags="$flags "
+      # shellcheck disable=SC2059
+      flags="$flags$(printf "$dirty_format" "$unstaged_str")"
     fi
-    if [ "$staged_deleted" -gt 0 ]; then
-      staged_str="${staged_str}-$staged_deleted"
+    if [ "$unmerged" -gt 0 ]; then
+      [ -n "$flags" ] && flags="$flags "
+      # shellcheck disable=SC2059
+      flags="$flags$(printf "$dirty_format" "${unmerged}u")"
     fi
-    if [ "$staged_renamed" -gt 0 ]; then
-      staged_str="${staged_str}—$staged_renamed"
+    if [ "$untracked" -gt 0 ]; then
+      [ -n "$flags" ] && flags="$flags "
+      # shellcheck disable=SC2059
+      flags="$flags$(printf "$dirty_format" "${untracked}?")"
     fi
-    if [ "$staged_copied" -gt 0 ]; then
-      staged_str="${staged_str}=$staged_copied"
+    if [ "$ignored" -gt 0 ]; then
+      # [ -n "$flags" ] && flags="$flags "
+      flags="$flags${ignored}!"
     fi
-    # ${unstaged}S
-    [ -n "$flags" ] && [ -n "$staged_str" ] && flags="$flags "
-    # shellcheck disable=SC2059
-    flags="$flags$(printf "$stage_format" "$staged_str")"
-  fi
-  if [ "$unstaged" -gt 0 ]; then
-    unstaged_str=
-    if [ "$unstaged_modified" -gt 0 ]; then
-      unstaged_str="${unstaged_str}~$unstaged_modified"
-    fi
-    if [ "$unstaged_added" -gt 0 ]; then
-      unstaged_str="${unstaged_str}+$unstaged_added"
-    fi
-    if [ "$unstaged_deleted" -gt 0 ]; then
-      unstaged_str="${unstaged_str}-$unstaged_deleted"
-    fi
-    if [ "$unstaged_renamed" -gt 0 ]; then
-      unstaged_str="${unstaged_str}•$unstaged_renamed"
-    fi
-    if [ "$unstaged_copied" -gt 0 ]; then
-      unstaged_str="${unstaged_str}=$unstaged_copied"
-    fi
-    # ${unstaged}U
-    [ -n "$flags" ] && [ -n "$staged_str" ] && flags="$flags "
-    # shellcheck disable=SC2059
-    flags="$flags$(printf "$dirty_format" "$unstaged_str")"
-  fi
-  if [ "$unmerged" -gt 0 ]; then
-    [ -n "$flags" ] && flags="$flags "
-    # shellcheck disable=SC2059
-    flags="$flags$(printf "$dirty_format" "${unmerged}u")"
-  fi
-  if [ "$untracked" -gt 0 ]; then
-    [ -n "$flags" ] && flags="$flags "
-    # shellcheck disable=SC2059
-    flags="$flags$(printf "$dirty_format" "${untracked}?")"
-  fi
-  if [ "$ignored" -gt 0 ]; then
-    # [ -n "$flags" ] && flags="$flags "
-    flags="$flags${ignored}!"
   fi
 
   if [ "$total" -gt 0 ]; then
-    # flags="$flags*"
+    if [ "$simple_output" -eq 1 ]; then
+      flags="$flags$simple_char"
+    fi
     branch_format="$dirty_format"
   elif [ "$ahead" -gt 0 ] || [ "$behind" -gt 0 ]; then
     branch_format="$stage_format"
