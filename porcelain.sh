@@ -14,7 +14,11 @@ main() {
   simple_char="${PORCELAIN_SIMPLE_CHAR:-*}"
   simple_output="${PORCELAIN_SIMPLE_OUTPUT:-1}"
 
-  tmpdir=$(mktemp -d -t git.status)
+  tmpdir=$(mktemp -d -t git-status-porcelain-XXX)
+  if [ ! -d "$tmpdir" ]; then
+    echo >&2 "$tmpdir: not a directory"
+    return 1
+  fi
   tmpfile="$tmpdir/porcelain.fifo"
   mkfifo "$tmpfile"
   git status --porcelain=v2 --ignore-submodules --branch \
