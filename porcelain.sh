@@ -1,6 +1,8 @@
 #!/bin/sh
 
 main() {
+  # TODO: check git install
+  # Minimum version for --porcelain=v2: 2.11.0 (after 2.6.6)
   # --git-dir --is-inside-git-dir --is-bare-repository # --short
   if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     return $?
@@ -189,3 +191,4 @@ main() {
 }
 
 main "$@"
+unset main
