@@ -1,11 +1,28 @@
 #!/bin/sh
 
-main() {
-  # TODO: check git install
-  # Minimum version for --porcelain=v2: 2.11.0 (after 2.6.6)
+# Minimum version for --porcelain=v2: 2.11.0 (after 2.6.6)
+check_git_version() {
+  if ! hash git 2>/dev/null; then
+    echo >&2 "git: command not found"
+    exit 127
+  fi
+  git_version="$(git --version)"
+  git_version="$(echo "$git_version" | cut -d' ' -f3)"
+  major="$(echo "$git_version" | cut -d'.' -f1)"
+  minor="$(echo "$git_version" | cut -d'.' -f2)"
+  if [ "${major:-0}" -lt 2 ] || [ "${minor:-0}" -lt 11 ]; then
+    echo >&2 "git: version 2.11 or greater is required"
+    exit 1
+  fi
+}
+
+git_status_porcelain() {
+  # if ! hash git 2>/dev/null; then
+  #   exit 127
+  # fi
   # --git-dir --is-inside-git-dir --is-bare-repository # --short
   if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    return $?
+    return 128
   fi
   # branch format/prefix="${1:-on %s%s}"
   dirty_format="${1:-%s}" # dirty repository format
@@ -190,5 +207,8 @@ main() {
   fi
 }
 
-main "$@"
+check_git_version
+git_status_porcelain "$@"
+ret=$?
 unset main
+exit $ret
