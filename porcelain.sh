@@ -259,5 +259,5 @@ main() {
 }
 
 if [ "${SHUNIT2:-0}" -eq 0 ]; then
-  porcelain.sh "$@"
+  main "$@"
 fi
