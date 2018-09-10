@@ -3,16 +3,16 @@
 # Dirty repository
 PORCELAIN_EXIT_CODE=2
 
-porcelain_usage() {
+usage() {
   echo >&2 "usage: ${0##*/} [-h|--help] [dirty-format] [staged-format] [clean-format]"
 }
 
 # Minimum version for --porcelain=v2: 2.11.0 (after 2.6.6)
-porcelain_check_git_version() {
+check_git_version() {
   [ "${PORCELAIN_GIT_CHECK:-0}" -eq 1 ] && return
   if ! hash git 2>/dev/null; then
     echo >&2 "git: command not found"
-    exit 127
+    return 127
   fi
   git_version="$(git --version)"
   git_version="$(echo "$git_version" | cut -d' ' -f3)"
@@ -20,14 +20,14 @@ porcelain_check_git_version() {
   minor="$(echo "$git_version" | cut -d'.' -f2)"
   if [ "${major:-0}" -lt 2 ] || [ "${minor:-0}" -lt 11 ]; then
     echo >&2 "git: version 2.11 or greater is required"
-    exit 1
+    return 1
   fi
   PORCELAIN_GIT_CHECK=1
 }
 
-porcelain_git_status() {
+git_status() {
   # if ! hash git 2>/dev/null; then
-  #   exit 127
+  #   return 127
   # fi
   # --git-dir --is-inside-git-dir --is-bare-repository # --short
   if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
@@ -219,18 +219,20 @@ porcelain_git_status() {
 
 main() {
   # Check git version
-  porcelain_check_git_version
+  if ! check_git_version; then
+    exit $?
+  fi
   # Check for flags
   for arg in "$@"; do
     case "$arg" in
       # --) shift break ;;
       "" | --)
         echo >&2 "$arg: invalid argument"
-        porcelain_usage
+        usage
         exit 1
         ;;
       -h | -\? | --help)
-        porcelain_usage
+        usage
         exit
         ;;
     esac
@@ -238,7 +240,7 @@ main() {
   # Count parsed arguments
   if [ "$#" -gt 3 ]; then
     echo >&2 "fatal: too many arguments"
-    porcelain_usage
+    usage
     exit 1
   fi
   # Check arguments format
@@ -247,13 +249,15 @@ main() {
       *%s*) continue ;;
       *)
         echo >&2 "$arg: missing format specifier '%s'"
-        porcelain_usage
+        usage
         exit 1
         ;;
     esac
   done
   # Output git status
-  porcelain_git_status "$@"
+  git_status "$@"
 }
 
-main "$@"
+if [ "${SHUNIT2:-0}" -eq 0 ]; then
+  porcelain.sh "$@"
+fi
