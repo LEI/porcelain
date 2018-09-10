@@ -1,7 +1,15 @@
 #!/bin/sh
 
+# Dirty repository
+PORCELAIN_EXIT_CODE=2
+
+porcelain_usage() {
+  echo >&2 "usage: ${0##*/} [-h|--help] [dirty-format] [staged-format] [clean-format]"
+}
+
 # Minimum version for --porcelain=v2: 2.11.0 (after 2.6.6)
-check_git_version() {
+porcelain_check_git_version() {
+  [ "${PORCELAIN_GIT_CHECK:-0}" -eq 1 ] && return
   if ! hash git 2>/dev/null; then
     echo >&2 "git: command not found"
     exit 127
@@ -14,9 +22,10 @@ check_git_version() {
     echo >&2 "git: version 2.11 or greater is required"
     exit 1
   fi
+  PORCELAIN_GIT_CHECK=1
 }
 
-git_status_porcelain() {
+porcelain_git_status() {
   # if ! hash git 2>/dev/null; then
   #   exit 127
   # fi
@@ -98,7 +107,8 @@ git_status_porcelain() {
       "? "*) untracked=$((untracked + 1)) ;;
       # Ignored items have the following format: ! <path>
       "! "*) ignored=$((ignored + 1)) ;;
-      *) # echo >&2 "$line: invalid git status line"
+      *)
+        echo >&2 "$line: invalid git status line"
         return 1
         ;;
     esac
@@ -203,12 +213,47 @@ git_status_porcelain() {
   printf "%s%s" "$branch" "$flags"
 
   if [ "$total" -gt 0 ]; then
-    return 2
+    return $PORCELAIN_EXIT_CODE
   fi
 }
 
-check_git_version
-git_status_porcelain "$@"
-ret=$?
-unset main
-exit $ret
+main() {
+  # Check git version
+  porcelain_check_git_version
+  # Check for flags
+  for arg in "$@"; do
+    case "$arg" in
+      # --) shift break ;;
+      "" | --)
+        echo >&2 "$arg: invalid argument"
+        porcelain_usage
+        exit 1
+        ;;
+      -h | -\? | --help)
+        porcelain_usage
+        exit
+        ;;
+    esac
+  done
+  # Count parsed arguments
+  if [ "$#" -gt 3 ]; then
+    echo >&2 "fatal: too many arguments"
+    porcelain_usage
+    exit 1
+  fi
+  # Check arguments format
+  for arg in "$@"; do
+    case "$arg" in
+      *%s*) continue ;;
+      *)
+        echo >&2 "$arg: missing format specifier '%s'"
+        porcelain_usage
+        exit 1
+        ;;
+    esac
+  done
+  # Output git status
+  porcelain_git_status "$@"
+}
+
+main "$@"
