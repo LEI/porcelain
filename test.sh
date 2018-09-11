@@ -1,54 +1,63 @@
 #!/bin/sh
 
-# set -e
-
 # Load functions
 SHUNIT2=1 . ./porcelain.sh
 
-# test -z "$TMPDIR" && TMPDIR="$(mktemp -d)"
-TMPDIR="${SHUNIT_TMPDIR:-$(mktemp -d)}"
+# test_main() {
+#   check_git_version
+#   # Git should be installed
+#   assertEquals 0 $?
 
-test_check_git_version() {
-  echo "Testing check git version"
-  check_git_version
-  # Git should be installed
-  assertEquals 0 $?
-}
+#   args="[%s] [%s] [%s]"
+#   # shellcheck disable=SC2086
+#   out="$(porcelain_git_status $args)"
+#   echo "out:$out"
+# }
 
-test_no_git_repo() {
-  testdir="$TMPDIR/porcelain-test_no_git_repo"
-  mkdir "$testdir"
-  cd "$testdir"
-  git_status
-  # Not a git repository
-  assertEquals 128 $?
-  cd ..
-  rm -r "$testdir"
-}
+# # FIXME: fails because SHUNIT_TMPDIR is inside a work tree
+# test_no_git_repo() {
+#   out="$(porcelain_git_status)"
+#   # Not a git repository
+#   assertEquals 128 $?
+# }
 
 test_git_init() {
-  testdir="$TMPDIR/porcelain-test_git_init"
-  mkdir "$testdir"
-  cd "$testdir"
   git init >/dev/null
-  git_status >/dev/null
-  # Clean git repository
-  assertEquals 0 $?
-  cd ..
-  rm -r "$testdir"
+  out="$(porcelain_git_status)"
+  # Clean git repository (exit code 0)
+  assertEquals "$PORCELAIN_CLEAN_CODE" $?
+  assertEquals "master" "$out"
 }
 
 test_git_init_dirty() {
-  testdir="$TMPDIR/porcelain-test_git_init_dirty"
-  mkdir "$testdir"
-  cd "$testdir"
   git init >/dev/null
   touch dirty
-  git_status >/dev/null
+  out="$(porcelain_git_status)"
   # Dirty git repository
-  assertEquals 2 $?
+  assertEquals "$PORCELAIN_DIRTY_CODE" $?
+  assertEquals "master*" "$out"
+}
+
+TESTDIR=
+
+oneTimeSetUp() {
+  # TESTDIR="${SHUNIT_TMPDIR:-${TMPDIR:-$(mktemp -d)}}"
+  if [ -z "$SHUNIT_TMPDIR" ]; then
+    echo >&2 "SHUNIT_TMPDIR is undefined"
+    exit 1
+  fi
+  TESTDIR="$SHUNIT_TMPDIR"
+}
+
+setUp() {
+  mkdir "$TESTDIR/porcelain-current-test"
+  cd "$TESTDIR/porcelain-current-test" || return $?
+}
+
+tearDown() {
+  [ -z "$TESTDIR" ] && exit 1
   cd ..
-  rm -rf "$testdir"
+  rm -rf "$TESTDIR/porcelain-current-test"
 }
 
 # Load shUnit2.

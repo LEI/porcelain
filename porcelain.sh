@@ -1,37 +1,87 @@
 #!/bin/sh
 
-# Dirty repository
-PORCELAIN_EXIT_CODE=2
+BIN=${0##*/}
+
+PORCELAIN_CLEAN_CODE=0 # Clean repository
+PORCELAIN_DIRTY_CODE=1 # Dirty repository
+PORCELAIN_ERROR_CODE=2 # I/O error
+# 3: Unexpected data found
+# 4: Incompatible version
+# 5: No git repository
+# 127: Command not found or exited
+
+TEST_MODE=${SHUNIT2:-0}
+
+# if [ "$TEST_MODE" -eq 0 ]; then
+#   set -e
+# fi
 
 usage() {
-  echo >&2 "usage: ${0##*/} [-h|--help] [dirty-format] [staged-format] [clean-format]"
+  echo >&2 "usage: $BIN [-h|--help] [dirty-format] [staged-format] [clean-format]"
+}
+
+usage_exit() {
+  code="$1"
+  echo >&2 "$2"
+  # shift
+  # if [ $# -ne 0 ]; then
+  #   echo >&2 "$BIN: $*"
+  # fi
+  usage
+  exit "$code"
 }
 
 # Minimum version for --porcelain=v2: 2.11.0 (after 2.6.6)
 check_git_version() {
-  [ "${PORCELAIN_GIT_CHECK:-0}" -eq 1 ] && return
+  # [ "${PORCELAIN_GIT_CHECK:-0}" -eq 1 ] && return
   if ! hash git 2>/dev/null; then
-    echo >&2 "git: command not found"
-    return 127
+    usage_exit 127 "command not found"
   fi
-  git_version="$(git --version)"
-  git_version="$(echo "$git_version" | cut -d' ' -f3)"
+  git_version="$(git --version | cut -d' ' -f3)"
   major="$(echo "$git_version" | cut -d'.' -f1)"
   minor="$(echo "$git_version" | cut -d'.' -f2)"
   if [ "${major:-0}" -lt 2 ] || [ "${minor:-0}" -lt 11 ]; then
-    echo >&2 "git: version 2.11 or greater is required"
-    return 1
+    usage_exit 4 "git version 2.11 or greater is required"
   fi
-  PORCELAIN_GIT_CHECK=1
+  # PORCELAIN_GIT_CHECK=1
+  return 0
 }
 
-git_status() {
+parse_args() {
+  # Check for flags
+  for arg in "$@"; do
+    case "$arg" in
+      # --) shift break ;;
+      "" | --)
+        usage_exit 3 "$arg: invalid argument"
+        ;;
+      -h | -\? | --help)
+        usage
+        exit
+        ;;
+    esac
+  done
+  # Count parsed arguments
+  if [ "$#" -gt 3 ]; then
+    usage_exit 3 "fatal: too many arguments"
+  fi
+  # Check arguments format
+  for arg in "$@"; do
+    case "$arg" in
+      *%s*%s*) usage_exit 3 "$arg: multiple format specifiers '%s'" ;;
+      *%s*) continue ;;
+      *) usage_exit 3 "$arg: missing format specifier '%s'" ;;
+    esac
+  done
+}
+
+porcelain_git_status() {
   # if ! hash git 2>/dev/null; then
   #   return 127
   # fi
   # --git-dir --is-inside-git-dir --is-bare-repository # --short
   if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    return 128
+    return 5
   fi
   # branch format/prefix="${1:-on %s%s}"
   dirty_format="${1:-%s}" # dirty repository format
@@ -44,8 +94,7 @@ git_status() {
 
   tmpdir=$(mktemp -d -t git-status-porcelain-XXX)
   if [ ! -d "$tmpdir" ]; then
-    echo >&2 "$tmpdir: not a directory"
-    return 1
+    usage_exit 2 "$tmpdir: not a directory"
   fi
   tmpfile="$tmpdir/porcelain.fifo"
   mkfifo "$tmpfile"
@@ -108,8 +157,7 @@ git_status() {
       # Ignored items have the following format: ! <path>
       "! "*) ignored=$((ignored + 1)) ;;
       *)
-        echo >&2 "$line: invalid git status line"
-        return 1
+        usage_exit 3 "$line: invalid git status line"
         ;;
     esac
   done <"$tmpfile"
@@ -213,58 +261,21 @@ git_status() {
   printf "%s%s" "$branch" "$flags"
 
   if [ "$total" -gt 0 ]; then
-    return $PORCELAIN_EXIT_CODE
+    return 1
   fi
+  return 0
 }
 
-main() {
-  # Check git version
-  if ! check_git_version; then
-    exit $?
-  fi
-  # Check for flags
-  for arg in "$@"; do
-    case "$arg" in
-      # --) shift break ;;
-      "" | --)
-        echo >&2 "$arg: invalid argument"
-        usage
-        exit 1
-        ;;
-      -h | -\? | --help)
-        usage
-        exit
-        ;;
-    esac
-  done
-  # Count parsed arguments
-  if [ "$#" -gt 3 ]; then
-    echo >&2 "fatal: too many arguments"
-    usage
-    exit 1
-  fi
-  # Check arguments format
-  for arg in "$@"; do
-    case "$arg" in
-      *%s*%s*)
-        echo >&2 "$arg: multiple format specifiers '%s'"
-        usage
-        exit 1
-        ;;
-      *%s*)
-        continue
-        ;;
-      *)
-        echo >&2 "$arg: missing format specifier '%s'"
-        usage
-        exit 1
-        ;;
-    esac
-  done
-  # Output git status
-  git_status "$@"
-}
-
-if [ "${SHUNIT2:-0}" -eq 0 ]; then
-  main "$@"
+# Check git version
+if ! check_git_version; then
+  exit $?
 fi
+
+# Guard against execution when the script is sourced for tests
+if [ "$TEST_MODE" -eq 1 ]; then
+  return
+fi
+
+parse_args "$@"
+
+porcelain_git_status "$@"
