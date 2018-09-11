@@ -246,7 +246,14 @@ main() {
   # Check arguments format
   for arg in "$@"; do
     case "$arg" in
-      *%s*) continue ;;
+      *%s*%s*)
+        echo >&2 "$arg: multiple format specifiers '%s'"
+        usage
+        exit 1
+        ;;
+      *%s*)
+        continue
+        ;;
       *)
         echo >&2 "$arg: missing format specifier '%s'"
         usage
